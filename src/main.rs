@@ -1,5 +1,5 @@
 use actix_web::{web, App, HttpResponse, HttpServer, Responder};
-use actix_multipart::Multipart;
+use actix_multipart::Multipart as ActixMultipart; // Renamed import
 use futures_util::StreamExt;
 use std::path::PathBuf;
 use std::io::Write;
@@ -11,6 +11,7 @@ use quick_xml::Reader;
 use quick_xml::events::Event;
 use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
+use utoipa::ToSchema;
 
 #[derive(OpenApi)]
 #[openapi(paths(upload_html, upload_xml, convert_xml, check_document))]
@@ -30,14 +31,14 @@ async fn convert_html_to_pdf(html_path: &PathBuf) -> Result<Vec<u8>> {
 #[utoipa::path(
     post,
     path = "/upload",
-    request_body(content = Multipart, description = "HTML file to upload"),
+    request_body(content = ActixMultipart, description = "HTML file to upload"), // Updated to use renamed import
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
         (status = 500, description = "Internal server error")
     )
 )]
-async fn upload_html(mut payload: Multipart) -> impl Responder {
+async fn upload_html(mut payload: ActixMultipart) -> impl Responder { // Updated to use renamed import
     while let Some(item) = payload.next().await {
         let mut field = match item {
             Ok(field) => field,
@@ -83,14 +84,14 @@ async fn upload_html(mut payload: Multipart) -> impl Responder {
 #[utoipa::path(
     post,
     path = "/upload_xml",
-    request_body(content = Multipart, description = "XML file to upload"),
+    request_body(content = ActixMultipart, description = "XML file to upload"), // Updated to use renamed import
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
         (status = 500, description = "Internal server error")
     )
 )]
-async fn upload_xml(mut payload: Multipart) -> impl Responder {
+async fn upload_xml(mut payload: ActixMultipart) -> impl Responder { // Updated to use renamed import
     while let Some(item) = payload.next().await {
         let mut field = match item {
             Ok(field) => field,
@@ -136,14 +137,14 @@ async fn upload_xml(mut payload: Multipart) -> impl Responder {
 #[utoipa::path(
     post,
     path = "/convert_xml",
-    request_body(content = Multipart, description = "XML file to convert"),
+    request_body(content = ActixMultipart, description = "XML file to convert"), // Updated to use renamed import
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
         (status = 500, description = "Internal server error")
     )
 )]
-async fn convert_xml(mut payload: Multipart) -> impl Responder {
+async fn convert_xml(mut payload: ActixMultipart) -> impl Responder { // Updated to use renamed import
     while let Some(item) = payload.next().await {
         let mut field = match item {
             Ok(field) => field,
@@ -189,14 +190,14 @@ async fn convert_xml(mut payload: Multipart) -> impl Responder {
 #[utoipa::path(
     post,
     path = "/check_document",
-    request_body(content = Multipart, description = "XML file to check"),
+    request_body(content = ActixMultipart, description = "XML file to check"), // Updated to use renamed import
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
         (status = 500, description = "Internal server error")
     )
 )]
-async fn check_document(mut payload: Multipart) -> impl Responder {
+async fn check_document(mut payload: ActixMultipart) -> impl Responder { // Updated to use renamed import
     while let Some(item) = payload.next().await {
         let mut field = match item {
             Ok(field) => field,
