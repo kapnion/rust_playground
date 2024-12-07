@@ -9,6 +9,12 @@ use std::fs::File;
 use std::io::Read;
 use quick_xml::Reader;
 use quick_xml::events::Event;
+use utoipa::OpenApi;
+use utoipa_swagger_ui::SwaggerUi;
+
+#[derive(OpenApi)]
+#[openapi(paths(upload_html, upload_xml, convert_xml, check_document))]
+struct ApiDoc;
 
 async fn convert_html_to_pdf(html_path: &PathBuf) -> Result<Vec<u8>> {
     let browser = Browser::new(LaunchOptions::default())?;
@@ -21,6 +27,16 @@ async fn convert_html_to_pdf(html_path: &PathBuf) -> Result<Vec<u8>> {
     Ok(pdf_bytes)
 }
 
+#[utoipa::path(
+    post,
+    path = "/upload",
+    request_body(content = Multipart, description = "HTML file to upload"),
+    responses(
+        (status = 200, description = "PDF file", content_type = "application/pdf"),
+        (status = 400, description = "Upload error"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 async fn upload_html(mut payload: Multipart) -> impl Responder {
     while let Some(item) = payload.next().await {
         let mut field = match item {
@@ -64,6 +80,16 @@ async fn upload_html(mut payload: Multipart) -> impl Responder {
     HttpResponse::BadRequest().body("No file uploaded")
 }
 
+#[utoipa::path(
+    post,
+    path = "/upload_xml",
+    request_body(content = Multipart, description = "XML file to upload"),
+    responses(
+        (status = 200, description = "PDF file", content_type = "application/pdf"),
+        (status = 400, description = "Upload error"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 async fn upload_xml(mut payload: Multipart) -> impl Responder {
     while let Some(item) = payload.next().await {
         let mut field = match item {
@@ -107,6 +133,16 @@ async fn upload_xml(mut payload: Multipart) -> impl Responder {
     HttpResponse::BadRequest().body("No file uploaded")
 }
 
+#[utoipa::path(
+    post,
+    path = "/convert_xml",
+    request_body(content = Multipart, description = "XML file to convert"),
+    responses(
+        (status = 200, description = "PDF file", content_type = "application/pdf"),
+        (status = 400, description = "Upload error"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 async fn convert_xml(mut payload: Multipart) -> impl Responder {
     while let Some(item) = payload.next().await {
         let mut field = match item {
@@ -150,6 +186,16 @@ async fn convert_xml(mut payload: Multipart) -> impl Responder {
     HttpResponse::BadRequest().body("No file uploaded")
 }
 
+#[utoipa::path(
+    post,
+    path = "/check_document",
+    request_body(content = Multipart, description = "XML file to check"),
+    responses(
+        (status = 200, description = "PDF file", content_type = "application/pdf"),
+        (status = 400, description = "Upload error"),
+        (status = 500, description = "Internal server error")
+    )
+)]
 async fn check_document(mut payload: Multipart) -> impl Responder {
     while let Some(item) = payload.next().await {
         let mut field = match item {
@@ -261,8 +307,11 @@ async fn check_document(mut payload: Multipart) -> impl Responder {
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
-    HttpServer::new(|| {
+    let openapi = ApiDoc::openapi();
+
+    HttpServer::new(move || {
         App::new()
+            .service(SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-doc/openapi.json", openapi.clone()))
             .route("/upload", web::post().to(upload_html))
             .route("/upload_xml", web::post().to(upload_xml))
             .route("/convert_xml", web::post().to(convert_xml))
