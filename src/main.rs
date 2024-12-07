@@ -31,7 +31,6 @@ async fn convert_html_to_pdf(html_path: &PathBuf) -> Result<Vec<u8>> {
 #[utoipa::path(
     post,
     path = "/upload",
-    request_body(content = ActixMultipart, description = "HTML file to upload"), // Updated to use renamed import
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
@@ -84,7 +83,6 @@ async fn upload_html(mut payload: ActixMultipart) -> impl Responder { // Updated
 #[utoipa::path(
     post,
     path = "/upload_xml",
-    request_body(content = ActixMultipart, description = "XML file to upload"), // Updated to use renamed import
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
@@ -137,7 +135,6 @@ async fn upload_xml(mut payload: ActixMultipart) -> impl Responder { // Updated 
 #[utoipa::path(
     post,
     path = "/convert_xml",
-    request_body(content = ActixMultipart, description = "XML file to convert"), // Updated to use renamed import
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
@@ -190,7 +187,6 @@ async fn convert_xml(mut payload: ActixMultipart) -> impl Responder { // Updated
 #[utoipa::path(
     post,
     path = "/check_document",
-    request_body(content = ActixMultipart, description = "XML file to check"), // Updated to use renamed import
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
