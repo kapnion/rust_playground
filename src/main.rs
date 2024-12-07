@@ -211,20 +211,12 @@ async fn check_document(mut payload: Multipart) -> impl Responder {
         let mut buf = Vec::new();
 
         let mut current_path = Vec::new();
-        let mut html_content = String::from("<html><body><h1>Document Elements</h1><ul>");
+        let mut html_content = String::from("<html><head><style>table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid black; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body><h1>Document Elements</h1><table><tr><th>Path</th><th>Label</th><th>Value</th></tr>");
 
         loop {
             match reader.read_event(&mut buf) {
                 Ok(Event::Start(ref e)) => {
-                    current_path.push(String::from_utf8_lossy(e.name()).to_string());
-                    for attr in e.attributes() {
-                        if let Ok(attr) = attr {
-                            let key = String::from_utf8_lossy(attr.key).to_string();
-                            let value = attr.unescape_and_decode_value(&reader).unwrap();
-                            let path = current_path.join(" > ");
-                            html_content.push_str(&format!("<li>{} @{}: {}</li>", path, key, value));
-                        }
-                    }
+                    current_path.push(String::from_utf8_lossy(e.name()).to_string().split(':').last().unwrap().to_string());
                 },
                 Ok(Event::End(ref _e)) => {
                     current_path.pop();
@@ -234,7 +226,7 @@ async fn check_document(mut payload: Multipart) -> impl Responder {
                     if !text.trim().is_empty() {
                         let path = current_path.join(" > ");
                         if let Some((_, label)) = elements.iter().find(|(el, _)| current_path.contains(el)) {
-                            html_content.push_str(&format!("<li>{} ({}): {}</li>", path, label, text));
+                            html_content.push_str(&format!("<tr><td>{}</td><td>{}</td><td>{}</td></tr>", path, label, text));
                         }
                     }
                 },
@@ -245,7 +237,7 @@ async fn check_document(mut payload: Multipart) -> impl Responder {
             buf.clear();
         }
 
-        html_content.push_str("</ul></body></html>");
+        html_content.push_str("</table></body></html>");
 
         let html_path = std::env::temp_dir().join("document_elements.html");
         if let Err(_) = File::create(&html_path).and_then(|mut f| f.write_all(html_content.as_bytes())) {
