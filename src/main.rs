@@ -7,6 +7,8 @@ use headless_chrome::{Browser, LaunchOptions};
 use anyhow::Result;
 use std::fs::File;
 use std::io::Read;
+use quick_xml::Reader;
+use quick_xml::events::Event;
 
 async fn convert_html_to_pdf(html_path: &PathBuf) -> Result<Vec<u8>> {
     let browser = Browser::new(LaunchOptions::default())?;
@@ -182,23 +184,67 @@ async fn check_document(mut payload: Multipart) -> impl Responder {
             return HttpResponse::InternalServerError().body("Read error");
         }
 
-        let elements = vec![
-            "CrossIndustryInvoice", "ExchangedDocumentContext", "BusinessProcessSpecifiedDocumentContextParameter",
-            "ID", "GuidelineSpecifiedDocumentContextParameter", "ExchangedDocument", "TypeCode", "IssueDateTime",
-            "DateTimeString", "format", "SupplyChainTradeTransaction", "ApplicableHeaderTradeAgreement",
-            "BuyerReference", "SellerTradeParty", "Name", "SpecifiedLegalOrganization", "PostalTradeAddress",
-            "CountryID", "SpecifiedTaxRegistration", "BuyerTradeParty", "BuyerOrderReferencedDocument",
-            "ApplicableHeaderTradeDelivery", "ApplicableHeaderTradeSettlement", "InvoiceCurrencyCode",
-            "SpecifiedTradeSettlementHeaderMonetarySummation", "TaxBasisTotalAmount", "TaxTotalAmount",
-            "GrandTotalAmount", "DuePayableAmount"
+        let elements: Vec<(String, &str)> = vec![
+            ("CrossIndustryInvoice".to_string(), "BG-0"), ("ExchangedDocumentContext".to_string(), "BG-2"), 
+            ("BusinessProcessSpecifiedDocumentContextParameter".to_string(), "BT-23-00"), ("ID".to_string(), "BT-23"), 
+            ("GuidelineSpecifiedDocumentContextParameter".to_string(), "BT-24-00"), ("ID".to_string(), "BT-24"), 
+            ("ExchangedDocument".to_string(), "BT-1-00"), ("ID".to_string(), "BT-1"), ("TypeCode".to_string(), "BT-3"), 
+            ("IssueDateTime".to_string(), "BT-2-00"), ("DateTimeString".to_string(), "BT-2"), ("format".to_string(), "BT-2-0"), 
+            ("SupplyChainTradeTransaction".to_string(), "BG-25-00"), ("ApplicableHeaderTradeAgreement".to_string(), "BT-10-00"), 
+            ("BuyerReference".to_string(), "BT-10"), ("SellerTradeParty".to_string(), "BG-4"), ("Name".to_string(), "BT-27"), 
+            ("SpecifiedLegalOrganization".to_string(), "BT-30-00"), ("ID".to_string(), "BT-30"), ("schemeID".to_string(), "BT-30-1"), 
+            ("PostalTradeAddress".to_string(), "BG-5"), ("CountryID".to_string(), "BT-40"), 
+            ("SpecifiedTaxRegistration".to_string(), "BT-31-00"), ("ID".to_string(), "BT-31"), ("schemeID".to_string(), "BT-31-0"), 
+            ("SpecifiedTaxRegistration".to_string(), "BT-32-00"), ("ID".to_string(), "BT-32"), ("schemeID".to_string(), "BT-32-0"), 
+            ("BuyerTradeParty".to_string(), "BG-7"), ("Name".to_string(), "BT-44"), ("SpecifiedLegalOrganization".to_string(), "BT-47-00"), 
+            ("ID".to_string(), "BT-47"), ("schemeID".to_string(), "BT-47-1"), ("BuyerOrderReferencedDocument".to_string(), "BT-13-00"), 
+            ("IssuerAssignedID".to_string(), "BT-13"), ("ApplicableHeaderTradeDelivery".to_string(), "BG-13-00"), 
+            ("ApplicableHeaderTradeSettlement".to_string(), "BG-19"), ("InvoiceCurrencyCode".to_string(), "BT-5"), 
+            ("SpecifiedTradeSettlementHeaderMonetarySummation".to_string(), "BG-22"), 
+            ("TaxBasisTotalAmount".to_string(), "BT-109"), ("TaxTotalAmount".to_string(), "BT-110"), 
+            ("currencyID".to_string(), "BT-110-0"), ("GrandTotalAmount".to_string(), "BT-112"), 
+            ("DuePayableAmount".to_string(), "BT-115")
         ];
 
+        let mut reader = Reader::from_str(&content);
+        reader.trim_text(true);
+        let mut buf = Vec::new();
+
+        let mut current_path = Vec::new();
         let mut html_content = String::from("<html><body><h1>Document Elements</h1><ul>");
-        for element in elements {
-            if content.contains(element) {
-                html_content.push_str(&format!("<li>{}</li>", element));
+
+        loop {
+            match reader.read_event(&mut buf) {
+                Ok(Event::Start(ref e)) => {
+                    current_path.push(String::from_utf8_lossy(e.name()).to_string());
+                    for attr in e.attributes() {
+                        if let Ok(attr) = attr {
+                            let key = String::from_utf8_lossy(attr.key).to_string();
+                            let value = attr.unescape_and_decode_value(&reader).unwrap();
+                            let path = current_path.join(" > ");
+                            html_content.push_str(&format!("<li>{} @{}: {}</li>", path, key, value));
+                        }
+                    }
+                },
+                Ok(Event::End(ref _e)) => {
+                    current_path.pop();
+                },
+                Ok(Event::Text(e)) => {
+                    let text = e.unescape_and_decode(&reader).unwrap();
+                    if !text.trim().is_empty() {
+                        let path = current_path.join(" > ");
+                        if let Some((_, label)) = elements.iter().find(|(el, _)| current_path.contains(el)) {
+                            html_content.push_str(&format!("<li>{} ({}): {}</li>", path, label, text));
+                        }
+                    }
+                },
+                Ok(Event::Eof) => break,
+                Err(e) => return HttpResponse::InternalServerError().body(format!("Error: {:?}", e)),
+                _ => (),
             }
+            buf.clear();
         }
+
         html_content.push_str("</ul></body></html>");
 
         let html_path = std::env::temp_dir().join("document_elements.html");
