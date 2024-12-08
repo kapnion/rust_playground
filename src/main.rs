@@ -9,19 +9,12 @@ use std::fs::File;
 use std::io::Read;
 use quick_xml::Reader;
 use quick_xml::events::Event;
-use utoipa::{OpenApi, ToSchema};
+use utoipa::OpenApi;
 use utoipa_swagger_ui::SwaggerUi;
-
-#[derive(ToSchema)]
-struct MultipartFormData {
-    file: String,
-}
+use utoipa::ToSchema;
 
 #[derive(OpenApi)]
-#[openapi(
-    paths(upload_html, upload_xml, convert_xml, check_document),
-    components(schemas(MultipartFormData))
-)]
+#[openapi(paths(upload_html, upload_xml, convert_xml, check_document))]
 struct ApiDoc;
 
 async fn convert_html_to_pdf(html_path: &PathBuf) -> Result<Vec<u8>> {
@@ -38,7 +31,6 @@ async fn convert_html_to_pdf(html_path: &PathBuf) -> Result<Vec<u8>> {
 #[utoipa::path(
     post,
     path = "/upload",
-    request_body(content = MultipartFormData, content_type = "multipart/form-data"),
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
@@ -91,7 +83,6 @@ async fn upload_html(mut payload: ActixMultipart) -> impl Responder { // Updated
 #[utoipa::path(
     post,
     path = "/upload_xml",
-    request_body(content = MultipartFormData, content_type = "multipart/form-data"),
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
@@ -144,7 +135,6 @@ async fn upload_xml(mut payload: ActixMultipart) -> impl Responder { // Updated 
 #[utoipa::path(
     post,
     path = "/convert_xml",
-    request_body(content = MultipartFormData, content_type = "multipart/form-data"),
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
@@ -197,7 +187,6 @@ async fn convert_xml(mut payload: ActixMultipart) -> impl Responder { // Updated
 #[utoipa::path(
     post,
     path = "/check_document",
-    request_body(content = MultipartFormData, content_type = "multipart/form-data"),
     responses(
         (status = 200, description = "PDF file", content_type = "application/pdf"),
         (status = 400, description = "Upload error"),
@@ -320,7 +309,6 @@ async fn main() -> std::io::Result<()> {
     HttpServer::new(move || {
         App::new()
             .service(SwaggerUi::new("/swagger-ui/{_:.*}").url("/api-doc/openapi.json", openapi.clone()))
-            .route("/api-doc/openapi.json", web::get().to(|| async { HttpResponse::Ok().json(ApiDoc::openapi()) }))
             .route("/upload", web::post().to(upload_html))
             .route("/upload_xml", web::post().to(upload_xml))
             .route("/convert_xml", web::post().to(convert_xml))

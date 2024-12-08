@@ -12,5 +12,5 @@ anyhow = "1.0"
 futures-util = "0.3"
 quick-xml = "0.22"
 serde = { version = "1.0", features = ["derive"] }
-utoipa = { version = "2.0", features = ["actix_extras"] }
+utoipa = "2.0"
 utoipa-swagger-ui = { version = "2.0", features = ["actix-web"] }
